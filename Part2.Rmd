@@ -1,0 +1,122 @@
+---
+title: "Statistical Inference part 2"
+author: "Douglas Martins"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, Tidy=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+for (i in c("dplyr","stringr","lubridate","ggplot2","stringi",'knitr')) {
+  if ((i %in% (installed.packages())) == F) {
+          install.packages(i)
+  }
+}
+library(ggplot2)
+library(stringr)
+library(stringi)
+library(dplyr)
+library(lubridate)
+library(knitr)
+options(scipen=999)
+set.seed(1234)
+```
+
+# Part 2
+
+## Overview
+
+Now in the second portion of the project, we're going to analyze the ToothGrowth data in the R datasets package.
+
+## Exploratory data analyses
+
+```{r}
+library(datasets)
+data(ToothGrowth)
+dim(ToothGrowth)
+```
+```{r}
+head(ToothGrowth)
+```
+
+```{r}
+summary(ToothGrowth)
+```
+## Summary of the data
+
+The ToothGrowth contains data from a trial with regards to tooth growth response. The response is the length (in mm) of odontoblasts (teeth) in each of 10 guinea pigs at each of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery methods (orange juice or ascorbic acid).
+
+Source: C. I. Bliss (1952) The Statistics of Bioassay. Academic Press.
+
+References: McNeil, D. R. (1977) Interactive Data Analysis. New York: Wiley.
+
+Data format:
+
+A data frame with 60 observations on 3 variables.
+
+* [,1] len (numeric) Tooth length in milimeters
+
+* [,2] supp (factor) Supplement type (VC or OJ).
+
+* [,3] dose (numeric) Dose in milligrams.
+
+## A comparison of tooth growth by supp and dose
+
+```{r}
+ggplot(ToothGrowth,aes(x=factor(dose),y=len,fill=factor(dose))) + 
+    geom_boxplot() +
+    facet_grid(.~supp) +
+    scale_x_discrete("Dosage [mg]") +   
+    scale_y_continuous("Tooth Length [mm]") +  
+    scale_fill_discrete(name="Dose [mg]") + 
+    ggtitle("Effect of Supplement Type and Dosage on Tooth Growth")
+```
+
+Through inspection of the plot, a case could be made for OJ giving additional benefit over VC for dosages up to 2mg, additionally it appears that increasing dosage has an positive impact on growth. In the following sections we will test these hypothesis.
+
+### Impact on dosage for OJ
+
+```{r}
+oj_data <- subset(ToothGrowth, supp=='OJ' & dose %in% c(0.5,2))
+t.test(len ~ dose,paired=FALSE,var.equal=TRUE,data=oj_data)
+```
+
+T-testing informs that increasing dosage for OJ does in fact increase tooth growth
+
+### Impact on dosage for VC
+
+```{r}
+vc_data <- subset(ToothGrowth, supp=='VC' & dose %in% c(0.5,2))
+t.test(len ~ dose,paired=FALSE,var.equal=TRUE,data=vc_data)
+```
+
+T-testing informs that increasing dosage for VC does in fact increase tooth growth
+
+### Comparison between OJ and VC for each dosage amount
+
+
+```{r}
+dose_vect <- c(0.5,1,2)
+doses <- lapply(dose_vect,function(d) {
+        dose_data <- subset(ToothGrowth, supp %in% c('VC','OJ') & dose %in% d)
+        t.test(len ~ supp,paired=FALSE,var.equal=TRUE,data=dose_data)
+})
+```
+```{r}
+print(doses[1])
+```
+
+For dosage amount of `r dose_vect[1]` [mg] there is evidence that the mean growth difference is not 0, meaning there is increased advantage of applying OJ over VC
+
+```{r}
+print(doses[2])
+```
+
+For dosage amount of `r dose_vect[2]` [mg] there is evidence that the mean growth difference is not 0, meaning there is increased advantage of applying OJ over VC
+
+```{r}
+print(doses[3])
+```
+
+For dosage amount of `r dose_vect[3]` [mg] there is no evidence that the mean growth difference is 0, meaning there is no advantage of applying OJ over VC and vice-versa.
